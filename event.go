@@ -49,7 +49,7 @@ type doubleWriter struct {
 
 func (r doubleWriter) Write(p []byte) (int, error) {
 	i1, err1 := r.Writer1.Write(p)
-	i2, err2 := r.Writer1.Write(p)
+	i2, err2 := r.Writer2.Write(p)
 	if err1 != nil {
 		return i1, err1
 	}
