@@ -1,11 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
+	"path"
 	"sync"
 	"time"
 )
@@ -17,59 +16,74 @@ type childStruct struct {
 
 var child childStruct
 
-func assertEnv(key string) string {
-	data := os.Getenv(key)
-	if data == "" {
-		log.Fatal("environment variable not set: ", key)
-	}
-	return data
-}
-
-type IpedParams struct {
-	memory   string
+type ipedParams struct {
 	jar      string
 	evidence string
 	output   string
+	profile  string
 }
 
-func runIped(params IpedParams) chan error {
-	if params.jar == "" {
-		params.jar = assertEnv("IPEDJAR")
+func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error {
+	err := locker.Lock(params.evidence)
+	if err != nil {
+		return err
 	}
-	if params.memory == "" {
-		params.memory = assertEnv("MEMORY")
-	}
-	timeout := make(chan bool, 1)
-	result := make(chan error, 1)
+	defer locker.Unlock()
+	events := make(chan event)
+	defer close(events)
 	go func() {
-		time.Sleep(10 * time.Millisecond)
-		timeout <- true
-		result <- errors.New("busy")
-	}()
-	go func() {
-		child.lock.Lock()
-		defer child.lock.Unlock()
-		select {
-		case <-timeout:
-			return
-		default:
-			result <- nil
-			child.cmd = exec.Command("java",
-				"-Djava.awt.headless=true",
-				fmt.Sprintf("-Xmx%s", params.memory),
-				"-jar", params.jar,
-				"-d", params.evidence,
-				"-o", params.output,
-				"--nologfile",
-				"--nogui",
-				"--portable")
-			child.cmd.Stdout = os.Stdout
-			child.cmd.Stderr = os.Stderr
-			err := child.cmd.Run()
-			if err != nil {
-				// log.Fatal(err)
+		last := time.Now()
+		for ev := range events {
+			if ev.Type == "progress" {
+				if time.Since(last) < time.Second {
+					continue
+				}
+				last = time.Now()
 			}
+			go func(ev event) {
+				sendEvent(notifierURL, ev)
+			}(ev)
 		}
 	}()
-	return result
+	args := []string{
+		"-Djava.awt.headless=true",
+		"-jar", params.jar,
+		"-d", path.Base(params.evidence),
+		"-o", params.output,
+		"--portable",
+		"--nologfile",
+		"--nogui",
+	}
+	eWriter := eventWriter{
+		EvidencePath: params.evidence,
+		URL:          notifierURL,
+		Writer:       os.Stdout,
+		events:       events,
+	}
+	child.cmd = exec.Command("java", args...)
+	child.cmd.Dir = path.Dir(params.evidence)
+	child.cmd.Stdout = eWriter
+	child.cmd.Stderr = eWriter
+	err = child.cmd.Start()
+	if err != nil {
+		return fmt.Errorf("error in execution: %v", err)
+	}
+	events <- event{
+		Type: "running",
+		Payload: eventPayload{
+			EvidencePath: params.evidence,
+		},
+	}
+	err = child.cmd.Wait()
+	t := "done"
+	if err != nil {
+		t = "failed"
+	}
+	events <- event{
+		Type: t,
+		Payload: eventPayload{
+			EvidencePath: params.evidence,
+		},
+	}
+	return err
 }

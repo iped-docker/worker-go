@@ -6,39 +6,108 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
 )
 
-// our main function
-func main() {
-	router := mux.NewRouter()
-	router.HandleFunc("/start", start).Methods("POST")
+func assertEnv(key string) string {
+	data := os.Getenv(key)
+	if data == "" {
+		log.Fatal("environment variable not set: ", key)
+	}
+	return data
+}
 
+func main() {
+	jar := assertEnv("IPEDJAR")
+	locker := remoteLocker{
+		URL: assertEnv("LOCK_URL"),
+	}
+	notifierURL := assertEnv("NOTIFY_URL")
 	PORT, ok := os.LookupEnv("PORT")
 	if !ok {
-		PORT = "8000"
+		PORT = "80"
 	}
+	watchURL, isWatching := os.LookupEnv("WATCH_URL")
+
+	if isWatching {
+		watch(watchURL, jar, &locker, notifierURL)
+		return
+	}
+	router := mux.NewRouter()
+	router.HandleFunc("/start", start(jar, &locker, notifierURL)).Methods("POST")
+
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
 }
 
-type startPayload struct {
-	EvidencePath string `json:"evidencePath,omitempty"`
-	OutputPath   string `json:"outputPath,omitempty"`
+func watch(watchURL, jar string, locker *remoteLocker, notifierURL string) {
+	for {
+		r, err := http.Get(watchURL)
+		if err != nil {
+			log.Fatalf("could not watch URL: %v\n", err)
+		}
+		defer r.Body.Close()
+		var payloads []todo
+		err = json.NewDecoder(r.Body).Decode(&payloads)
+		if err != nil {
+			log.Fatalf("could not parse JSON: %v\n", err)
+		}
+		if len(payloads) < 1 {
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		payload := payloads[0]
+		params := ipedParams{
+			jar:      jar,
+			evidence: payload.EvidencePath,
+			output:   payload.OutputPath,
+			profile:  payload.Profile,
+		}
+		err = runIped(params, locker, notifierURL)
+		if err != nil {
+			log.Fatalf("error: %v\n", err)
+		}
+		break
+	}
 }
 
-func start(w http.ResponseWriter, r *http.Request) {
-	var payload startPayload
-	_ = json.NewDecoder(r.Body).Decode(&payload)
-	params := IpedParams{
-		evidence: payload.EvidencePath,
-		output:   payload.OutputPath,
+func start(jar string, locker *remoteLocker, notifierURL string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		var payload todo
+		err := json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "could not parse JSON: %s", err.Error())
+			return
+		}
+		params := ipedParams{
+			jar:      jar,
+			evidence: payload.EvidencePath,
+			output:   payload.OutputPath,
+			profile:  payload.Profile,
+		}
+		result := make(chan error)
+		go func() {
+			result <- runIped(params, locker, notifierURL)
+		}()
+		select {
+		case err = <-result:
+		case <-time.After(5 * time.Second):
+			err = nil
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "error : %s", err.Error())
+			return
+		}
+		fmt.Fprintf(w, "{\"status\":\"started\"}")
 	}
-	err := <-runIped(params)
-	if err != nil {
-		w.WriteHeader(http.StatusLocked)
-		fmt.Fprintf(w, "Error: %s", err.Error())
-		return
-	}
-	fmt.Fprintf(w, "{\"status\":\"started\"}")
+}
+
+type todo struct {
+	EvidencePath string `json:"evidencePath,omitempty"`
+	OutputPath   string `json:"outputPath,omitempty"`
+	Profile      string `json:"profile,omitempty"`
 }
