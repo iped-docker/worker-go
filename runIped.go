@@ -5,16 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"sync"
 	"time"
 )
-
-type childStruct struct {
-	lock sync.Mutex
-	cmd  *exec.Cmd
-}
-
-var child childStruct
 
 type ipedParams struct {
 	jar      string
@@ -54,17 +46,27 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		"--nologfile",
 		"--nogui",
 	}
+	os.MkdirAll(path.Join(path.Dir(params.evidence), "SARD"), 0777)
+	log, err := os.Create(path.Join(path.Dir(params.evidence), "SARD", "IPED.log"))
+	if err != nil {
+		return err
+	}
+	defer log.Close()
+	dw := doubleWriter{
+		Writer1: os.Stdout,
+		Writer2: log,
+	}
 	eWriter := eventWriter{
 		EvidencePath: params.evidence,
 		URL:          notifierURL,
-		Writer:       os.Stdout,
+		Writer:       dw,
 		events:       events,
 	}
-	child.cmd = exec.Command("java", args...)
-	child.cmd.Dir = path.Dir(params.evidence)
-	child.cmd.Stdout = eWriter
-	child.cmd.Stderr = eWriter
-	err = child.cmd.Start()
+	cmd := exec.Command("java", args...)
+	cmd.Dir = path.Dir(params.evidence)
+	cmd.Stdout = eWriter
+	cmd.Stderr = eWriter
+	err = cmd.Start()
 	if err != nil {
 		return fmt.Errorf("error in execution: %v", err)
 	}
@@ -74,7 +76,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 			EvidencePath: params.evidence,
 		},
 	}
-	err = child.cmd.Wait()
+	err = cmd.Wait()
 	t := "done"
 	if err != nil {
 		t = "failed"

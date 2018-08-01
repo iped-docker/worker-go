@@ -42,7 +42,7 @@ func main() {
 }
 
 func watch(watchURL, jar string, locker *remoteLocker, notifierURL string) {
-	for {
+	for i := 0; i < 2*6*60; i++ {
 		r, err := http.Get(watchURL)
 		if err != nil {
 			log.Fatalf("could not watch URL: %v\n", err)

@@ -42,6 +42,26 @@ func (r eventWriter) Write(p []byte) (int, error) {
 	return i, err
 }
 
+type doubleWriter struct {
+	Writer1 io.Writer
+	Writer2 io.Writer
+}
+
+func (r doubleWriter) Write(p []byte) (int, error) {
+	i1, err1 := r.Writer1.Write(p)
+	i2, err2 := r.Writer1.Write(p)
+	if err1 != nil {
+		return i1, err1
+	}
+	if err2 != nil {
+		return i2, err2
+	}
+	if i1 != i2 {
+		return i1, fmt.Errorf("mismatched write on doublewriter")
+	}
+	return i1, nil
+}
+
 func sendEvent(URL string, ev event) error {
 	fmt.Printf("event: %v\n", ev)
 	j, err := json.Marshal(ev)
