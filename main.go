@@ -90,8 +90,7 @@ func start(jar string, locker *remoteLocker, notifierURL string) func(w http.Res
 		var payload todo
 		err := json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "could not parse JSON: %s", err.Error())
+			http.Error(w, fmt.Sprintf("could not parse JSON: %s", err.Error()), http.StatusBadRequest)
 			return
 		}
 		params := ipedParams{
@@ -110,11 +109,10 @@ func start(jar string, locker *remoteLocker, notifierURL string) func(w http.Res
 			err = nil
 		}
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "error : %s", err.Error())
+			http.Error(w, fmt.Sprintf("error : %s", err.Error()), http.StatusBadRequest)
 			return
 		}
-		fmt.Fprintf(w, "{\"status\":\"started\"}")
+		w.Write([]byte("{\"status\":\"started\"}"))
 	}
 }
 
