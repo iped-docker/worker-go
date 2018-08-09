@@ -30,5 +30,6 @@ func (l *remoteLocker) Unlock() error {
 			EvidencePath: l.EvidencePath,
 		},
 	}
+	l.EvidencePath = ""
 	return sendEvent(l.URL, body)
 }

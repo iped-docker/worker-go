@@ -37,6 +37,18 @@ func main() {
 	}
 	router := mux.NewRouter()
 	router.HandleFunc("/start", start(jar, &locker, notifierURL)).Methods("POST")
+	router.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		w.Write([]byte("ok"))
+	}).Methods("GET")
+	router.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		if locker.EvidencePath != "" {
+			http.Error(w, "not ready", http.StatusServiceUnavailable)
+			return
+		}
+		w.Write([]byte("ok"))
+	}).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
 }
