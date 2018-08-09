@@ -46,8 +46,8 @@ func main() {
 	}).Methods("GET")
 
 	if isWatching {
-		watch(watchURL, jar, &locker, notifierURL)
 		go log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
+		watch(watchURL, jar, &locker, notifierURL)
 	} else {
 		router.HandleFunc("/start", start(jar, &locker, notifierURL)).Methods("POST")
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
