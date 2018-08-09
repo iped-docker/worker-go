@@ -46,6 +46,9 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		"--nologfile",
 		"--nogui",
 	}
+	if params.profile != "" {
+		args = append(args, "--profile", params.profile)
+	}
 	os.MkdirAll(path.Join(path.Dir(params.evidence), "SARD"), 0777)
 	log, err := os.Create(path.Join(path.Dir(params.evidence), "SARD", "IPED.log"))
 	if err != nil {
