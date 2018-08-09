@@ -31,12 +31,7 @@ func main() {
 	}
 	watchURL, isWatching := os.LookupEnv("WATCH_URL")
 
-	if isWatching {
-		watch(watchURL, jar, &locker, notifierURL)
-		return
-	}
 	router := mux.NewRouter()
-	router.HandleFunc("/start", start(jar, &locker, notifierURL)).Methods("POST")
 	router.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		w.Write([]byte("ok"))
@@ -50,7 +45,14 @@ func main() {
 		w.Write([]byte("ok"))
 	}).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
+	if isWatching {
+		watch(watchURL, jar, &locker, notifierURL)
+		go log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
+	} else {
+		router.HandleFunc("/start", start(jar, &locker, notifierURL)).Methods("POST")
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
+	}
+
 }
 
 func watch(watchURL, jar string, locker *remoteLocker, notifierURL string) {
