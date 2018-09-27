@@ -39,6 +39,9 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	}()
 	args := []string{
 		"-Djava.awt.headless=true",
+		"-XX:+UnlockExperimentalVMOptions",
+		"-XX:+UseCGroupMemoryLimitForHeap",
+		"-XX:MaxRAMFraction=1",
 		"-jar", params.jar,
 		"-d", path.Base(params.evidence),
 		"-o", params.output,
