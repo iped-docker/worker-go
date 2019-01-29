@@ -4,7 +4,7 @@ const (
 swagger_content = `{
   "swagger": "2.0",
   "info": {
-    "version": "2.1.0",
+    "version ": "2.1.1",
     "title": "worker-go"
   },
   "schemes": [
@@ -29,10 +29,10 @@ swagger_content = `{
             "schema": {
               "type": "object",
               "properties": {
-                "evidence": {
+                "evidencePath": {
                   "type": "string"
                 },
-                "output": {
+                "outputPath": {
                   "type": "string"
                 },
                 "profile": {
