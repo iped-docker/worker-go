@@ -11,6 +11,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+//go:generate go run scripts/generate.go
+
 func assertEnv(key string) string {
 	data := os.Getenv(key)
 	if data == "" {
@@ -32,24 +34,45 @@ func main() {
 	watchURL, isWatching := os.LookupEnv("WATCH_URL")
 
 	router := mux.NewRouter()
-	router.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		w.Write([]byte("ok"))
-	}).Methods("GET")
-	router.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		if locker.EvidencePath != "" {
-			http.Error(w, "not ready", http.StatusServiceUnavailable)
-			return
-		}
-		w.Write([]byte("ok"))
-	}).Methods("GET")
+
+	router.HandleFunc("/healthz",
+		func(w http.ResponseWriter, r *http.Request) {
+			defer r.Body.Close()
+			w.Write([]byte("ok"))
+		}).Methods("GET")
+
+	router.HandleFunc("/readiness",
+		func(w http.ResponseWriter, r *http.Request) {
+			defer r.Body.Close()
+			if locker.EvidencePath != "" {
+				http.Error(w, "not ready", http.StatusServiceUnavailable)
+				return
+			}
+			w.Write([]byte("ok"))
+		}).Methods("GET")
 
 	if isWatching {
 		go http.ListenAndServe(fmt.Sprintf(":%s", PORT), router)
+
 		watch(watchURL, jar, &locker, notifierURL)
 	} else {
-		router.HandleFunc("/start", start(jar, &locker, notifierURL)).Methods("POST")
+		router.HandleFunc("/start",
+			start(jar, &locker, notifierURL)).Methods("POST")
+		router.HandleFunc("/start",
+			func(w http.ResponseWriter, r *http.Request) {
+				defer r.Body.Close()
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Methods", "POST")
+				w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+			}).Methods("OPTIONS")
+
+		router.HandleFunc("/swagger.json",
+			func(w http.ResponseWriter, r *http.Request) {
+				defer r.Body.Close()
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Write([]byte(swagger_content))
+			})
+
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
 	}
 
@@ -89,6 +112,7 @@ func watch(watchURL, jar string, locker *remoteLocker, notifierURL string) {
 func start(jar string, locker *remoteLocker, notifierURL string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		var payload todo
 		err := json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
