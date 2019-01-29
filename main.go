@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-//go:generate go run scripts/generate.go
+//go:generate go run generate/main.go
 
 func assertEnv(key string) string {
 	data := os.Getenv(key)
@@ -70,7 +70,7 @@ func main() {
 			func(w http.ResponseWriter, r *http.Request) {
 				defer r.Body.Close()
 				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Write([]byte(swagger_content))
+				w.Write([]byte(generatedSwagger))
 			})
 
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))

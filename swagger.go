@@ -1,10 +1,10 @@
 package main 
 
 const (
-swagger_content = `{
+generatedSwagger = `{
   "swagger": "2.0",
   "info": {
-    "version ": "2.1.1",
+    "version ": "2.2.0",
     "title": "worker-go"
   },
   "schemes": [
@@ -53,5 +53,6 @@ swagger_content = `{
       }
     }
   }
-}`
+}
+`
 )
