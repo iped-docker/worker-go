@@ -27,18 +27,16 @@ type eventWriter struct {
 
 func (r eventWriter) Write(p []byte) (int, error) {
 	i, err := r.Writer.Write(p)
-	if err != nil {
-		ev := event{
-			Type: "progress",
-			Payload: eventPayload{
-				EvidencePath: r.EvidencePath,
-				Progress:     string(p[:i]),
-			},
-		}
-		go func() {
-			r.events <- ev
-		}()
+	ev := event{
+		Type: "progress",
+		Payload: eventPayload{
+			EvidencePath: r.EvidencePath,
+			Progress:     string(p[:i]),
+		},
 	}
+	go func() {
+		r.events <- ev
+	}()
 	return i, err
 }
 
@@ -70,6 +68,7 @@ func sendEvent(URL string, ev event) error {
 	}
 	resp, err := http.Post(URL, "application/json", bytes.NewBuffer(j))
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	defer resp.Body.Close()
