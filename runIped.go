@@ -53,7 +53,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		args = append(args, "-profile", params.profile)
 	}
 	os.MkdirAll(path.Join(path.Dir(params.evidence), "SARD"), 0777)
-	log, err := os.Create(path.Join(path.Dir(params.evidence), "SARD", "IPED.log"))
+	log, err := os.OpenFile(path.Join(path.Dir(params.evidence), "SARD", "IPED.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
