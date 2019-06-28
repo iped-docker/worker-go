@@ -14,8 +14,8 @@ import (
 //go:generate go run generate/main.go
 
 func assertEnv(key string) string {
-	data := os.Getenv(key)
-	if data == "" {
+	data, ok := os.LookupEnv(key)
+	if !ok {
 		log.Fatal("environment variable not set: ", key)
 	}
 	return data
@@ -73,6 +73,7 @@ func main() {
 				w.Write([]byte(generatedSwagger))
 			})
 
+		log.Println("Listening on port", PORT)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), router))
 	}
 
