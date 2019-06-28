@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -93,5 +94,31 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 			EvidencePath: params.evidence,
 		},
 	}
+	permPaths := []string{
+		"Ferramenta de Pesquisa.exe",
+		"IPED-SearchApp.exe",
+		"indexador/tools",
+		"indexador/jre/bin",
+		"indexador/lib",
+	}
+	var d string
+	if path.IsAbs(params.output) {
+		d = params.output
+	} else {
+		d = path.Join(path.Dir(params.evidence), params.output)
+	}
+	for _, p := range permPaths {
+		permissions(d, p)
+	}
 	return err
+}
+
+func permissions(dirPath string, targetPath string) {
+	cmd := exec.Command("chmod", "-cR", "a+x", targetPath)
+	cmd.Dir = dirPath
+	out, err := cmd.CombinedOutput()
+	log.Printf("%v", string(out))
+	if err != nil {
+		log.Printf("%v", err.Error())
+	}
 }
