@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -87,9 +88,13 @@ func watch(watchURL, jar string, locker *remoteLocker, notifierURL string) {
 		}
 		defer r.Body.Close()
 		var payloads []todo
-		err = json.NewDecoder(r.Body).Decode(&payloads)
+		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			log.Fatalf("could not parse JSON: %v\n", err)
+			log.Fatalf("could not read watch body: %v\n", err)
+		}
+		err = json.Unmarshal(b, &payloads)
+		if err != nil {
+			log.Fatalf("could not parse JSON: %v; data: %v\n", err, string(b))
 		}
 		if len(payloads) < 1 {
 			time.Sleep(5 * time.Second)
