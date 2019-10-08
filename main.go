@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -55,10 +56,11 @@ func main() {
 	if isWatching {
 		go http.ListenAndServe(fmt.Sprintf(":%s", PORT), router)
 
-		watch(watchURL, jar, &locker, notifierURL)
+		ctxWatch, _ := context.WithTimeout(context.Background(), 1*time.Hour)
+		watch(ctxWatch, watchURL, jar, &locker, notifierURL)
 	} else {
 		router.HandleFunc("/start",
-			start(jar, &locker, notifierURL)).Methods("POST")
+			listen(jar, &locker, notifierURL)).Methods("POST")
 		router.HandleFunc("/start",
 			func(w http.ResponseWriter, r *http.Request) {
 				defer r.Body.Close()
@@ -80,42 +82,62 @@ func main() {
 
 }
 
-func watch(watchURL, jar string, locker *remoteLocker, notifierURL string) {
-	for i := 0; i < 2*6*60; i++ {
-		r, err := http.Get(watchURL)
-		if err != nil {
-			log.Fatalf("could not watch URL: %v\n", err)
+func watch(ctx context.Context, watchURL, jar string, locker *remoteLocker, notifierURL string) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			r, err := http.Get(watchURL)
+			if err != nil {
+				log.Fatalf("could not watch URL: %v\n", err)
+			}
+			defer r.Body.Close()
+			var payloads []todo
+			b, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				log.Fatalf("could not read watch body: %v\n", err)
+			}
+			err = json.Unmarshal(b, &payloads)
+			if err != nil {
+				log.Fatalf("could not parse JSON: %v; data: %v\n", err, string(b))
+			}
+			if len(payloads) < 1 {
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			ctxPayloads, _ := context.WithTimeout(context.Background(), 60*time.Second)
+			processPayloads(ctxPayloads, payloads, jar, locker, notifierURL)
+			break
 		}
-		defer r.Body.Close()
-		var payloads []todo
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Fatalf("could not read watch body: %v\n", err)
-		}
-		err = json.Unmarshal(b, &payloads)
-		if err != nil {
-			log.Fatalf("could not parse JSON: %v; data: %v\n", err, string(b))
-		}
-		if len(payloads) < 1 {
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		payload := payloads[0]
-		params := ipedParams{
-			jar:      jar,
-			evidence: payload.EvidencePath,
-			output:   payload.OutputPath,
-			profile:  payload.Profile,
-		}
-		err = runIped(params, locker, notifierURL)
-		if err != nil {
-			log.Fatalf("error: %v\n", err)
-		}
-		break
 	}
 }
 
-func start(jar string, locker *remoteLocker, notifierURL string) func(w http.ResponseWriter, r *http.Request) {
+func processPayloads(ctx context.Context, payloads []todo, jar string, locker *remoteLocker, notifierURL string) {
+	var err error
+	for _, payload := range payloads {
+		select {
+		case <-ctx.Done():
+			if err != nil {
+				log.Fatalf("error: %v\n", err)
+			}
+			return
+		default:
+			params := ipedParams{
+				jar:      jar,
+				evidence: payload.EvidencePath,
+				output:   payload.OutputPath,
+				profile:  payload.Profile,
+			}
+			err = runIped(params, locker, notifierURL)
+			if err != nil {
+				fmt.Printf("error: %v\n", err)
+			}
+		}
+	}
+}
+
+func listen(jar string, locker *remoteLocker, notifierURL string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
