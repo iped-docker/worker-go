@@ -19,17 +19,23 @@ func (l *remoteLocker) Lock(evidencePath string) error {
 			EvidencePath: l.EvidencePath,
 		},
 	}
-	return sendEvent(l.URL, body)
+	err := sendEvent(l.URL, body)
+	if err != nil {
+		l.EvidencePath = ""
+	}
+	return err
 }
 
 func (l *remoteLocker) Unlock() error {
-	defer l.Locker.Unlock()
+	defer func() {
+		l.EvidencePath = ""
+		l.Locker.Unlock()
+	}()
 	body := event{
 		Type: "UNLOCK",
 		Payload: eventPayload{
 			EvidencePath: l.EvidencePath,
 		},
 	}
-	l.EvidencePath = ""
 	return sendEvent(l.URL, body)
 }

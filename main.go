@@ -108,7 +108,7 @@ func watch(ctx context.Context, watchURL, jar string, locker *remoteLocker, noti
 			}
 			ctxPayloads, _ := context.WithTimeout(context.Background(), 60*time.Second)
 			processPayloads(ctxPayloads, payloads, jar, locker, notifierURL)
-			break
+			return
 		}
 	}
 }
