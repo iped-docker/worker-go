@@ -59,6 +59,8 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		return err
 	}
 	defer log.Close()
+	hostname, _ := os.Hostname()
+	log.WriteString(fmt.Sprintf("HOSTNAME: %s\n", hostname))
 	dw := doubleWriter{
 		Writer1: os.Stdout,
 		Writer2: log,
