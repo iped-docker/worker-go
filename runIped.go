@@ -54,11 +54,11 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		args = append(args, "-profile", params.profile)
 	}
 	ipedfolder := path.Join(path.Dir(params.evidence), "SARD")
-	err = os.MkdirAll(ipedfolder, 0777)
+	err = os.MkdirAll(ipedfolder, 0755)
 	if err != nil {
 		return err
 	}
-	err = os.Chmod(ipedfolder, 0770)
+	err = os.Chmod(ipedfolder, 0750)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 			EvidencePath: params.evidence,
 		},
 	}
-	err = os.Chmod(ipedfolder, 0777)
+	err = os.Chmod(ipedfolder, 0755)
 	if err != nil {
 		return err
 	}
