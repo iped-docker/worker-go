@@ -53,8 +53,16 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	if params.profile != "" {
 		args = append(args, "-profile", params.profile)
 	}
-	os.MkdirAll(path.Join(path.Dir(params.evidence), "SARD"), 0777)
-	log, err := os.OpenFile(path.Join(path.Dir(params.evidence), "SARD", "IPED.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	ipedfolder := path.Join(path.Dir(params.evidence), "SARD")
+	err = os.MkdirAll(ipedfolder, 0777)
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(ipedfolder, 0770)
+	if err != nil {
+		return err
+	}
+	log, err := os.OpenFile(path.Join(ipedfolder, "IPED.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -96,6 +104,10 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 			EvidencePath: params.evidence,
 		},
 	}
+	err = os.Chmod(ipedfolder, 0777)
+	if err != nil {
+		return err
+	}
 	permPaths := []string{
 		"Ferramenta de Pesquisa.exe",
 		"IPED-SearchApp.exe",
@@ -107,7 +119,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	if path.IsAbs(params.output) {
 		d = params.output
 	} else {
-		d = path.Join(path.Dir(params.evidence), params.output)
+		d = path.Join(ipedfolder, params.output)
 	}
 	for _, p := range permPaths {
 		permissions(d, p)
