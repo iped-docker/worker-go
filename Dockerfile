@@ -1,4 +1,4 @@
-ARG IPED_VERSION=3.15.6
+ARG IPED_VERSION=3.16.1-beta-aidesk_apfs
 FROM golang:alpine as builder
 WORKDIR /go/src/app
 COPY . .
