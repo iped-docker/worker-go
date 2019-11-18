@@ -22,6 +22,7 @@ func (l *remoteLocker) Lock(evidencePath string) error {
 	err := sendEvent(l.URL, body)
 	if err != nil {
 		l.EvidencePath = ""
+		l.Locker.Unlock()
 	}
 	return err
 }
