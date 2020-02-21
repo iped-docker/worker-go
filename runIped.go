@@ -119,7 +119,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	if path.IsAbs(params.output) {
 		d = params.output
 	} else {
-		d = path.Join(ipedfolder, params.output)
+		d = path.Join(path.Dir(params.evidence), params.output)
 	}
 	for _, p := range permPaths {
 		permissions(d, p)
