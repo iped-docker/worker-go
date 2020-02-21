@@ -1,4 +1,4 @@
-ARG IPED_VERSION=3.15.6
+ARG IPED_VERSION=processor_3.17.1
 FROM golang:alpine as builder
 WORKDIR /go/src/app
 COPY . .
