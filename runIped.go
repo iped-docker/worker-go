@@ -53,7 +53,15 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	if params.profile != "" {
 		args = append(args, "-profile", params.profile)
 	}
-	ipedfolder := path.Join(path.Dir(params.evidence), "SARD")
+	var ipedfolder string
+	// ipedfolder is the absolute path of the target output folder
+	// Ex: /data/mat1/SARD
+	// params.output will usually be 'SARD', but it can be an absolute path
+	if path.IsAbs(params.output) {
+		ipedfolder = params.output
+	} else {
+		ipedfolder = path.Join(path.Dir(params.evidence), params.output)
+	}
 	err = os.MkdirAll(ipedfolder, 0755)
 	if err != nil {
 		return err
@@ -79,6 +87,10 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		Writer:       dw,
 		events:       events,
 	}
+	// since params.output will be usually a relative path,
+	// like 'SARD', we execute the command at the folder of the evidence path
+	// using cmd.Dir. It is important to keep the relative path on the option -d
+	// but still have the absolute path in the var ipedfolder
 	cmd := exec.Command("java", args...)
 	cmd.Dir = path.Dir(params.evidence)
 	cmd.Stdout = eWriter
@@ -115,14 +127,9 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		"indexador/jre/bin",
 		"indexador/lib",
 	}
-	var d string
-	if path.IsAbs(params.output) {
-		d = params.output
-	} else {
-		d = path.Join(path.Dir(params.evidence), params.output)
-	}
+
 	for _, p := range permPaths {
-		permissions(d, p)
+		permissions(ipedfolder, p)
 	}
 	return err
 }
