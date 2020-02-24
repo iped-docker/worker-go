@@ -116,6 +116,9 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 			EvidencePath: params.evidence,
 		},
 	}
+	if err != nil {
+		return err
+	}
 	err = os.Chmod(ipedfolder, 0755)
 	if err != nil {
 		return err
