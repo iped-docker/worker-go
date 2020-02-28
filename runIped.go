@@ -57,13 +57,13 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		args = append(args, "-profile", params.profile)
 	}
 	if params.additionalArgs != "" {
-		addArgsArray := strings.split(additionalArgs, " ")
+		addArgsArray := strings.Split(additionalArgs, " ")
 		for  i := 0; i < len(addArgsArray); i++ {
 			args = append(args, addArgsArray[i])			
 		}
 	}
 	if params.additionalPaths != "" {
-		addPathsArray := strings.split(additionalPaths, "\n")
+		addPathsArray := strings.Split(additionalPaths, "\n")
 		for  i := 0; i < len(addPathsArray); i++ {
 			args = append(args, "-d", addPathsArray[i])			
 		}
