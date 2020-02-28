@@ -15,6 +15,8 @@ type ipedParams struct {
 	evidence string
 	output   string
 	profile  string
+	additionalArgs string
+	additionalPaths string
 }
 
 func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error {
