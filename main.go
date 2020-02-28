@@ -128,6 +128,8 @@ func processPayloads(ctx context.Context, payloads []todo, jar string, locker *r
 				evidence: payload.EvidencePath,
 				output:   payload.OutputPath,
 				profile:  payload.Profile,
+				additionalArgs:  payload.AdditionalArgs,
+				additionalPaths:  payload.AdditionalPaths,
 			}
 			err = runIped(params, locker, notifierURL)
 			if err != nil {
@@ -152,6 +154,8 @@ func listen(jar string, locker *remoteLocker, notifierURL string) func(w http.Re
 			evidence: payload.EvidencePath,
 			output:   payload.OutputPath,
 			profile:  payload.Profile,
+			additionalArgs:  payload.AdditionalArgs,
+			additionalPaths:  payload.AdditionalPaths,
 		}
 		result := make(chan error)
 		go func() {
@@ -174,4 +178,6 @@ type todo struct {
 	EvidencePath string `json:"evidencePath,omitempty"`
 	OutputPath   string `json:"outputPath,omitempty"`
 	Profile      string `json:"profile,omitempty"`
+	AdditionalArgs      string `json:"additionalArgs,omitempty"`
+	AdditionalPaths      string `json:"additionalPaths,omitempty"`
 }
