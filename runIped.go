@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"time"
+	"strings"
 )
 
 type ipedParams struct {
@@ -53,6 +54,19 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	if params.profile != "" {
 		args = append(args, "-profile", params.profile)
 	}
+	if params.additionalArgs != "" {
+		addArgsArray := strings.split(additionalArgs, " ")
+		for  i := 0; i < len(addArgsArray); i++ {
+			args = append(args, addArgsArray[i])			
+		}
+	}
+	if params.additionalPaths != "" {
+		addPathsArray := strings.split(additionalPaths, "\n")
+		for  i := 0; i < len(addPathsArray); i++ {
+			args = append(args, "-d", addPathsArray[i])			
+		}
+	}
+		
 	var ipedfolder string
 	// ipedfolder is the absolute path of the target output folder
 	// Ex: /data/mat1/SARD
