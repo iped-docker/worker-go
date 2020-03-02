@@ -115,24 +115,30 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	if err != nil {
 		return fmt.Errorf("error in execution: %v", err)
 	}
-	events <- event{
+	err = sendEvent(notifierURL, event{
 		Type: "running",
 		Payload: eventPayload{
 			EvidencePath: params.evidence,
 		},
-	}
-	err = cmd.Wait()
-	t := "done"
+	})
 	if err != nil {
+		return fmt.Errorf("could not set status to 'running': %v", err)
+	}
+	errCmd := cmd.Wait()
+	t := "done"
+	if errCmd != nil {
 		t = "failed"
 	}
-	events <- event{
+	err = sendEvent(notifierURL, event{
 		Type: t,
 		Payload: eventPayload{
 			EvidencePath: params.evidence,
 		},
-	}
+	})
 	if err != nil {
+		return fmt.Errorf("could not set status to 'failed': %v", err)
+	}
+	if errCmd != nil {
 		return err
 	}
 	err = os.Chmod(ipedfolder, 0755)
