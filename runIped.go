@@ -6,16 +6,16 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"time"
 	"strings"
+	"time"
 )
 
 type ipedParams struct {
-	jar      string
-	evidence string
-	output   string
-	profile  string
-	additionalArgs string
+	jar             string
+	evidence        string
+	output          string
+	profile         string
+	additionalArgs  string
 	additionalPaths string
 }
 
@@ -58,17 +58,17 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	}
 	if params.additionalArgs != "" {
 		addArgsArray := strings.Split(params.additionalArgs, " ")
-		for  i := 0; i < len(addArgsArray); i++ {
-			args = append(args, addArgsArray[i])			
+		for i := 0; i < len(addArgsArray); i++ {
+			args = append(args, addArgsArray[i])
 		}
 	}
 	if params.additionalPaths != "" {
 		addPathsArray := strings.Split(params.additionalPaths, "\n")
-		for  i := 0; i < len(addPathsArray); i++ {
-			args = append(args, "-d", addPathsArray[i])			
+		for i := 0; i < len(addPathsArray); i++ {
+			args = append(args, "-d", addPathsArray[i])
 		}
 	}
-		
+
 	var ipedfolder string
 	// ipedfolder is the absolute path of the target output folder
 	// Ex: /data/mat1/SARD
@@ -103,6 +103,15 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 		Writer:       dw,
 		events:       events,
 	}
+	err = sendEvent(notifierURL, event{
+		Type: "running",
+		Payload: eventPayload{
+			EvidencePath: params.evidence,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("could not set status to 'running': %v", err)
+	}
 	// since params.output will be usually a relative path,
 	// like 'SARD', we execute the command at the folder of the evidence path
 	// using cmd.Dir. It is important to keep the relative path on the option -d
@@ -114,15 +123,6 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error 
 	err = cmd.Start()
 	if err != nil {
 		return fmt.Errorf("error in execution: %v", err)
-	}
-	err = sendEvent(notifierURL, event{
-		Type: "running",
-		Payload: eventPayload{
-			EvidencePath: params.evidence,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("could not set status to 'running': %v", err)
 	}
 	errCmd := cmd.Wait()
 	t := "done"
