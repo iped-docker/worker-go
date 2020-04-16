@@ -19,12 +19,17 @@ type ipedParams struct {
 	additionalPaths string
 }
 
-func runIped(params ipedParams, locker *remoteLocker, notifierURL string) error {
+func runIped(params ipedParams, locker *remoteLocker, notifierURL string) (finalError error) {
 	err := locker.Lock(params.evidence)
 	if err != nil {
 		return err
 	}
-	defer locker.Unlock()
+	defer func() {
+		err := locker.Unlock()
+		if err != nil {
+			finalError = err
+		}
+	}()
 	events := make(chan event)
 	defer close(events)
 	go func() {
