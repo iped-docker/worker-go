@@ -141,7 +141,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) (final
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("could not set status to 'failed': %v", err)
+		return fmt.Errorf("could not set status to '%s': %v", t, err)
 	}
 	if errCmd != nil {
 		return err
