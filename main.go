@@ -56,7 +56,8 @@ func main() {
 	if isWatching {
 		go http.ListenAndServe(fmt.Sprintf(":%s", PORT), router)
 
-		ctxWatch, _ := context.WithTimeout(context.Background(), 1*time.Hour)
+		ctxWatch, ctxCancel := context.WithTimeout(context.Background(), 1*time.Hour)
+		defer ctxCancel()
 		watch(ctxWatch, watchURL, jar, &locker, notifierURL)
 	} else {
 		router.HandleFunc("/start",
@@ -106,7 +107,8 @@ func watch(ctx context.Context, watchURL, jar string, locker *remoteLocker, noti
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			ctxPayloads, _ := context.WithTimeout(context.Background(), 60*time.Second)
+			ctxPayloads, cancelPayload := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancelPayload()
 			processPayloads(ctxPayloads, payloads, jar, locker, notifierURL)
 			return
 		}
