@@ -126,12 +126,12 @@ func processPayloads(ctx context.Context, payloads []todo, jar string, locker *r
 			return
 		default:
 			params := ipedParams{
-				jar:      jar,
-				evidence: payload.EvidencePath,
-				output:   payload.OutputPath,
-				profile:  payload.Profile,
+				jar:             jar,
+				evidence:        payload.EvidencePath,
+				output:          payload.OutputPath,
+				profile:         payload.Profile,
 				additionalArgs:  payload.AdditionalArgs,
-				additionalPaths:  payload.AdditionalPaths,
+				additionalPaths: payload.AdditionalPaths,
 			}
 			err = runIped(params, locker, notifierURL)
 			if err != nil {
@@ -152,12 +152,12 @@ func listen(jar string, locker *remoteLocker, notifierURL string) func(w http.Re
 			return
 		}
 		params := ipedParams{
-			jar:      jar,
-			evidence: payload.EvidencePath,
-			output:   payload.OutputPath,
-			profile:  payload.Profile,
+			jar:             jar,
+			evidence:        payload.EvidencePath,
+			output:          payload.OutputPath,
+			profile:         payload.Profile,
 			additionalArgs:  payload.AdditionalArgs,
-			additionalPaths:  payload.AdditionalPaths,
+			additionalPaths: payload.AdditionalPaths,
 		}
 		result := make(chan error)
 		go func() {
@@ -177,9 +177,9 @@ func listen(jar string, locker *remoteLocker, notifierURL string) func(w http.Re
 }
 
 type todo struct {
-	EvidencePath string `json:"evidencePath,omitempty"`
-	OutputPath   string `json:"outputPath,omitempty"`
-	Profile      string `json:"profile,omitempty"`
-	AdditionalArgs      string `json:"additionalArgs,omitempty"`
-	AdditionalPaths      string `json:"additionalPaths,omitempty"`
+	EvidencePath    string `json:"evidencePath,omitempty"`
+	OutputPath      string `json:"outputPath,omitempty"`
+	Profile         string `json:"profile,omitempty"`
+	AdditionalArgs  string `json:"additionalArgs,omitempty"`
+	AdditionalPaths string `json:"additionalPaths,omitempty"`
 }
