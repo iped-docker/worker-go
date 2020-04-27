@@ -8,6 +8,9 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type ipedParams struct {
@@ -19,12 +22,54 @@ type ipedParams struct {
 	additionalPaths string
 }
 
-func runIped(params ipedParams, locker *remoteLocker, notifierURL string) (finalError error) {
+func createIpedMetrics() ipedMetrics {
+	return ipedMetrics{
+		calls: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "ipedworker_runIped_calls",
+			Help: "Number of calls to runIped",
+		}, []string{"hostname", "evidence"}),
+		finish: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "ipedworker_runIped_finish",
+			Help: "Number of finished runs",
+		}, []string{"hostname", "evidence", "result"}),
+		running: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ipedworker_runIped_running",
+			Help: "Whether IPED is running or not",
+		}, []string{"hostname", "evidence"}),
+		found: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ipedworker_runIped_found",
+			Help: "Number of items found",
+		}, []string{"hostname", "evidence"}),
+		processed: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ipedworker_runIped_processed",
+			Help: "Number of items processed",
+		}, []string{"hostname", "evidence"}),
+	}
+}
+
+type ipedMetrics struct {
+	calls     *prometheus.CounterVec
+	finish    *prometheus.CounterVec
+	running   *prometheus.GaugeVec
+	found     *prometheus.GaugeVec
+	processed *prometheus.GaugeVec
+}
+
+func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metrics ipedMetrics) (finalError error) {
+	hostname, _ := os.Hostname()
+	metrics.calls.WithLabelValues(hostname, params.evidence).Inc()
+	metrics.running.WithLabelValues(hostname, params.evidence).Set(0)
 	err := locker.Lock(params.evidence)
 	if err != nil {
 		return err
 	}
 	defer func() {
+		result := "done"
+		if err != nil {
+			result = "failed"
+		}
+		metrics.running.WithLabelValues(hostname, params.evidence).Set(0)
+		metrics.finish.WithLabelValues(hostname, params.evidence, result).Inc()
 		err := locker.Unlock()
 		if err != nil {
 			finalError = err
@@ -32,20 +77,14 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) (final
 	}()
 	events := make(chan event)
 	defer close(events)
-	go func() {
-		last := time.Now()
-		for ev := range events {
-			if ev.Type == "progress" {
-				if time.Since(last) < time.Second {
-					continue
-				}
-				last = time.Now()
-			}
-			go func(ev event) {
-				sendEvent(notifierURL, ev)
-			}(ev)
+	go eventThrottle(events, func(ev event) {
+		processed, found, ok := progress(ev)
+		if ok {
+			metrics.processed.WithLabelValues(hostname, params.evidence).Set(processed)
+			metrics.found.WithLabelValues(hostname, params.evidence).Set(found)
 		}
-	}()
+		sendEvent(notifierURL, ev)
+	})
 	args := []string{
 		"-Djava.awt.headless=true",
 		"-XX:+UnlockExperimentalVMOptions",
@@ -96,7 +135,6 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) (final
 		return err
 	}
 	defer log.Close()
-	hostname, _ := os.Hostname()
 	log.WriteString(fmt.Sprintf("HOSTNAME: %s\n", hostname))
 	dw := doubleWriter{
 		Writer1: os.Stdout,
@@ -129,6 +167,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) (final
 	if err != nil {
 		return fmt.Errorf("error in execution: %v", err)
 	}
+	metrics.running.WithLabelValues(hostname, params.evidence).Set(1)
 	errCmd := cmd.Wait()
 	t := "done"
 	if errCmd != nil {
@@ -162,6 +201,21 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string) (final
 		permissions(ipedfolder, p)
 	}
 	return err
+}
+
+func eventThrottle(events <-chan event, syncSender func(event)) {
+	last := time.Now().Add(-1 * time.Second)
+	for ev := range events {
+		if ev.Type == "progress" {
+			if time.Since(last) < time.Second {
+				continue
+			}
+			last = time.Now()
+		}
+		go func(ev event) {
+			syncSender(ev)
+		}(ev)
+	}
 }
 
 func permissions(dirPath string, targetPath string) {
