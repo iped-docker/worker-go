@@ -31,6 +31,12 @@ func main() {
 	if "" == *path {
 		log.Fatal("environment variable not set: EVIDENCE_PATH")
 	}
+	if "" == *outputPath {
+		log.Fatal("environment variable not set: OUTPUT_PATH")
+	}
+	if "" == *profile {
+		log.Fatal("environment variable not set: IPED_PROFILE")
+	}
 	if "" == *jar {
 		log.Fatal("environment variable not set: IPEDJAR")
 	}
