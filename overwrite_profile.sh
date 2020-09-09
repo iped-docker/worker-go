@@ -108,13 +108,15 @@ do
         fi
 done
 
+IPEDDIR="`dirname($IPEDJAR)`"
+
 # LocalConfig.txt variables (with iped_ prefix)
 for v in ${VARS_LOCAL_CONFIG}
 do
         if [ "${!v}" ]
         then
                 echo ${v} = ${!v}
-                sed -i -e "s|.*${v#iped_} =.*|${v#iped_} = ${!v}|" /root/IPED/iped/LocalConfig.txt
+                sed -i -e "s|.*${v#iped_} =.*|${v#iped_} = ${!v}|" ${IPEDDIR}/LocalConfig.txt
         fi
 done
 
@@ -124,7 +126,7 @@ do
         if [ "${!v}" ]
         then
                 echo ${v} = ${!v}
-                sed -i -e "s|.*${v#iped_} =.*|${v#iped_} = ${!v}|" /root/IPED/iped/profiles/*/*/IPEDConfig.txt
+                sed -i -e "s|.*${v#iped_} =.*|${v#iped_} = ${!v}|" ${IPEDDIR}/profiles/*/*/IPEDConfig.txt
         fi
 done
 
@@ -134,7 +136,7 @@ do
         if [ "${!v}" ]
         then
                 echo ${v} = ${!v}
-                sed -i -e "s|.*${v#iped_} =.*|${v#iped_} = ${!v}|" /root/IPED/iped/profiles/*/*/conf/AdvancedConfig.txt
+                sed -i -e "s|.*${v#iped_} =.*|${v#iped_} = ${!v}|" ${IPEDDIR}/profiles/*/*/conf/AdvancedConfig.txt
         fi
 done
 
