@@ -7,6 +7,7 @@ pipeline {
   stages {
     stage('Build'){
       environment{
+        HOME=/tmp/
         CGO_ENABLED=0
       }
       steps{
