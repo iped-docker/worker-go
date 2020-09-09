@@ -2,12 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,52 +12,31 @@ import (
 
 // ServeOptions has options for Serve()
 type ServeOptions struct {
-	locker       *remoteLocker
-	PORT         string
-	notifierURL  string
-	jar          string
-	shouldWatch  bool
-	watchURL     string
-	shouldListen bool
-	hasJob       bool
+	locker      *remoteLocker
+	PORT        string
+	notifierURL string
+	jar         string
 }
 
 // Serve creates the web server
-func Serve(options ServeOptions, job Job) {
-	metrics := createIpedMetrics()
+func Serve(port string, locker *remoteLocker) context.Context {
 	router := mux.NewRouter()
 	endpoints := []string{}
 
 	router.HandleFunc("/healthz", healthz).Methods("GET")
 	endpoints = append(endpoints, "/healthz")
 
-	router.HandleFunc("/readiness", readiness(options)).Methods("GET")
+	router.HandleFunc("/readiness", readiness(locker)).Methods("GET")
 	endpoints = append(endpoints, "/readiness")
 
 	router.Handle("/metrics", promhttp.Handler())
 	endpoints = append(endpoints, "/metrics")
 
-	if options.shouldListen {
-		router.HandleFunc("/start",
-			func(w http.ResponseWriter, r *http.Request) {
-				defer r.Body.Close()
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Methods", "POST")
-				w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
-			}).Methods("OPTIONS")
-
-		router.HandleFunc("/start",
-			listenForJobs(options.jar, options.locker, options.notifierURL, metrics)).Methods("POST")
-		endpoints = append(endpoints, "/start")
-	}
-
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	srv := &http.Server{Addr: fmt.Sprintf(":%s", options.PORT), Handler: router}
+	srv := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
 	srv.Shutdown(ctx)
 	go func() {
-		log.Println("Listening on port", options.PORT)
+		log.Println("Listening on port", port)
 		log.Println("Endpoints:")
 		for _, x := range endpoints {
 			log.Println(x)
@@ -70,18 +46,7 @@ func Serve(options ServeOptions, job Job) {
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
-
-	if options.hasJob {
-		log.Printf("using single job: %s\n", job.EvidencePath)
-		processPayloads(ctx, []Job{job}, options.jar, options.locker, options.notifierURL, metrics)
-		cancel()
-	}
-
-	if options.shouldWatch {
-		log.Printf("watching URL: %s\n", options.watchURL)
-		go watch(ctx, options.watchURL, options.jar, options.locker, options.notifierURL, metrics)
-	}
-	<-ctx.Done()
+	return ctx
 }
 
 func healthz(w http.ResponseWriter, r *http.Request) {
@@ -89,10 +54,10 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func readiness(options ServeOptions) func(w http.ResponseWriter, r *http.Request) {
+func readiness(locker *remoteLocker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
-		if options.locker.EvidencePath != "" {
+		if locker.EvidencePath != "" {
 			http.Error(w, "not ready", http.StatusServiceUnavailable)
 			return
 		}
@@ -100,74 +65,10 @@ func readiness(options ServeOptions) func(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func listenForJobs(jar string, locker *remoteLocker, notifierURL string, metrics ipedMetrics) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		var payload Job
-		err := json.NewDecoder(r.Body).Decode(&payload)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("could not parse JSON: %s", err.Error()), http.StatusBadRequest)
-			return
-		}
-		params := ipedParams{
-			jar:             jar,
-			evidence:        payload.EvidencePath,
-			output:          payload.OutputPath,
-			profile:         payload.Profile,
-			additionalArgs:  payload.AdditionalArgs,
-			additionalPaths: payload.AdditionalPaths,
-		}
-		result := make(chan error)
-		go func() {
-			result <- runIped(params, locker, notifierURL, metrics)
-		}()
-		select {
-		case err = <-result:
-		case <-time.After(5 * time.Second):
-			err = nil
-		}
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error : %s", err.Error()), http.StatusBadRequest)
-			return
-		}
-		w.Write([]byte("{\"status\":\"started\"}"))
-	}
-}
-
-func watch(ctx context.Context, watchURL, jar string, locker *remoteLocker, notifierURL string, metrics ipedMetrics) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			r, err := http.Get(watchURL)
-			if err != nil {
-				log.Fatalf("could not watch URL: %v\n", err)
-			}
-			defer r.Body.Close()
-			var payloads []Job
-			b, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				log.Fatalf("could not read watch body: %v\n", err)
-			}
-			err = json.Unmarshal(b, &payloads)
-			if err != nil {
-				log.Fatalf("could not parse JSON: %v; data: %v\n", err, string(b))
-			}
-			if len(payloads) < 1 {
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			ctxPayloads, cancelPayload := context.WithTimeout(context.Background(), 60*time.Second)
-			defer cancelPayload()
-			processPayloads(ctxPayloads, payloads, jar, locker, notifierURL, metrics)
-			return
-		}
-	}
-}
-
-func processPayloads(ctx context.Context, payloads []Job, jar string, locker *remoteLocker, notifierURL string, metrics ipedMetrics) {
+func processPayloads(ctx context.Context, payloads []Job, jar string, locker *remoteLocker, notifierURL string) {
+	metrics := createIpedMetrics()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	var err error
 	for _, payload := range payloads {
 		select {

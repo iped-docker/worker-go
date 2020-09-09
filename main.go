@@ -9,59 +9,36 @@ import (
 //go:generate go run generate/main.go
 
 func main() {
-	shouldListen := flag.Bool("listen", false, "if the server should receive jobs via API")
-	shouldWatch := flag.Bool("watch", false, "if the server should use polling to get jobs")
-	path := flag.String("path", "", "path to a datasource, to create a single job")
+	path := flag.String("path", os.Getenv("EVIDENCE_PATH"), "(EVIDENCE_PATH) path to a datasource, to create a single job")
+	jar := flag.String("jar", os.Getenv("IPEDJAR"), "(IPEDJAR) path to the IPED.jar file")
+	lockURL := flag.String("lock", os.Getenv("LOCK_URL"), "(LOCK_URL) URL of the lock service")
+	notifierURL := flag.String("notifier", os.Getenv("NOTIFY_URL"), "(NOTIFY_URL) URL of the notifier service")
+	port := flag.String("port", os.Getenv("PORT"), "(PORT=80) port to serve metrics")
+
 	flag.Parse()
 
-	jar := assertEnv("IPEDJAR")
+	if "" == *path {
+		log.Fatal("environment variable not set: EVIDENCE_PATH")
+	}
+	if "" == *jar {
+		log.Fatal("environment variable not set: IPEDJAR")
+	}
+	if "" == *lockURL {
+		log.Fatal("environment variable not set: LOCK_URL")
+	}
 	locker := remoteLocker{
-		URL: assertEnv("LOCK_URL"),
+		URL: *lockURL,
 	}
-	notifierURL := assertEnv("NOTIFY_URL")
-	PORT, ok := os.LookupEnv("PORT")
-	if !ok {
-		PORT = "80"
+	if "" == *notifierURL {
+		log.Fatal("environment variable not set: NOTIFY_URL")
 	}
-
-	watchURL := ""
-	if *shouldWatch {
-		watchURL = assertEnv("WATCH_URL")
+	if "" == *port {
+		*port = "80"
 	}
 
-	hasJob := (*path != "")
-
-	count := 0
-	for _, x := range []bool{*shouldListen, *shouldWatch, hasJob} {
-		if x {
-			count = count + 1
-		}
-	}
-	if count == 0 {
-		log.Fatalf("One of --listen --watch or --path should be used")
-	}
-	if count > 1 {
-		log.Fatalf("Only one of --listen --watch or --path should be used")
-	}
-
-	Serve(ServeOptions{
-		locker:       &locker,
-		PORT:         PORT,
-		watchURL:     watchURL,
-		shouldWatch:  *shouldWatch,
-		jar:          jar,
-		notifierURL:  notifierURL,
-		hasJob:       hasJob,
-		shouldListen: *shouldListen,
-	}, Job{
+	ctx := Serve(*port, &locker)
+	job := Job{
 		EvidencePath: *path,
-	})
-}
-
-func assertEnv(key string) string {
-	data, ok := os.LookupEnv(key)
-	if !ok {
-		log.Fatal("environment variable not set: ", key)
 	}
-	return data
+	processPayloads(ctx, []Job{job}, *jar, &locker, *notifierURL)
 }
