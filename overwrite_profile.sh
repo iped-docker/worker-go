@@ -108,7 +108,7 @@ do
         fi
 done
 
-IPEDDIR="`dirname($IPEDJAR)`"
+IPEDDIR="`dirname ${IPEDJAR}`"
 
 # LocalConfig.txt variables (with iped_ prefix)
 for v in ${VARS_LOCAL_CONFIG}
