@@ -34,10 +34,10 @@ func Serve(port string, locker *remoteLocker) context.Context {
 
 	ctx := context.Background()
 	srv := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
-	go func(){
+	go func() {
 		<-ctx.Done()
 		srv.Shutdown(ctx)
-	}
+	}()
 	go func() {
 		log.Println("Listening on port", port)
 		log.Println("Endpoints:")
