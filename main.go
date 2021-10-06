@@ -17,6 +17,8 @@ func main() {
 	profile := flag.String("profile", os.Getenv("IPED_PROFILE"), "(IPED_PROFILE) IPED profile")
 	addArgs := flag.String("addargs", os.Getenv("ADD_ARGS"), "(ADD_ARGS) extra arguments to IPED")
 	addPaths := flag.String("addpaths", os.Getenv("ADD_PATHS"), "(ADD_PATHS) extra source paths to IPED")
+	mvPath := flag.String("mvpath", os.Getenv("MV_PATH"), "(MV_PATH) move card path to definitive path")
+
 
 	flag.Parse()
 
@@ -26,6 +28,7 @@ func main() {
 		Profile:         *profile,
 		AdditionalArgs:  *addArgs,
 		AdditionalPaths: *addPaths,
+		MvPath:          *mvPath,
 	}
 
 	if "" == *path {
