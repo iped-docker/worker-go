@@ -20,6 +20,7 @@ type ipedParams struct {
 	profile         string
 	additionalArgs  string
 	additionalPaths string
+	mvPath		string
 }
 
 func createIpedMetrics() ipedMetrics {
