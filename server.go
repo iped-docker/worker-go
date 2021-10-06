@@ -88,6 +88,7 @@ func processPayloads(ctx context.Context, payloads []Job, jar string, locker *re
 				profile:         payload.Profile,
 				additionalArgs:  payload.AdditionalArgs,
 				additionalPaths: payload.AdditionalPaths,
+				mvPath:          payload.mvPath,
 			}
 			err = runIped(params, locker, notifierURL, metrics)
 			if err != nil {
@@ -103,4 +104,5 @@ type Job struct {
 	Profile         string `json:"profile,omitempty"`
 	AdditionalArgs  string `json:"additionalArgs,omitempty"`
 	AdditionalPaths string `json:"additionalPaths,omitempty"`
+	MvPath 		string `json:"mvPath,omitempty"`
 }
