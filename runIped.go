@@ -183,10 +183,21 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 	if err != nil {
 		return fmt.Errorf("could not set status to '%s': %v", t, err)
 	}
+	
 	if errCmd != nil {
 		return err
 	}
-	err = os.Chmod(ipedfolder, 0755)
+	else {
+		
+		return postProcessing(ipedFolder, params.mvPath)
+		
+	}
+}
+
+
+
+func postProcessing(dirPath string, mvPath string){
+	err = os.Chmod(dirPath, 0755)
 	if err != nil {
 		return err
 	}
@@ -199,10 +210,55 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 	}
 
 	for _, p := range permPaths {
-		permissions(ipedfolder, p)
+		permissions(dirPath, p)
+	}
+	
+	
+	if mvPath != "" {
+		if _, err := os.Stat(mvPath); os.IsNotExist(err) {
+			return fmt.Errorf("Destination MV path already exists. Fix it manually!")
+		}
+		else {
+			srcPathArray := strings.Split(dirPath, "/")
+			srcDir := ""
+			for i := 0; i < len(srcPathArray) -1; i++ {
+				srcDir = srcDir + "/" + srcPathArray[i]
+			}
+			
+			dstPathArray := strings.Split(mvPath, "/")
+			dstDir := ""
+			for i := 0; i < len(dstPathArray) -1; i++ {
+				dstDir = dstDir + "/" + dstPathArray[i]
+			}
+			cmd := exec.Command("mkdir", "-p", dstDir)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				return err
+			}
+			else {
+				cmd := exec.Command("mv", srcDir, mvPath)
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					return err
+				}
+			}
+			
+		}
 	}
 	return err
+
 }
+
+func permissions(dirPath string, targetPath string) {
+	cmd := exec.Command("chmod", "-cR", "a+x", targetPath)
+	cmd.Dir = dirPath
+	out, err := cmd.CombinedOutput()
+	log.Printf("%v", string(out))
+	if err != nil {
+		log.Printf("%v", err.Error())
+	}
+}
+
 
 func eventThrottle(events <-chan event, syncSender func(event)) {
 	last := time.Now().Add(-1 * time.Second)
@@ -219,12 +275,4 @@ func eventThrottle(events <-chan event, syncSender func(event)) {
 	}
 }
 
-func permissions(dirPath string, targetPath string) {
-	cmd := exec.Command("chmod", "-cR", "a+x", targetPath)
-	cmd.Dir = dirPath
-	out, err := cmd.CombinedOutput()
-	log.Printf("%v", string(out))
-	if err != nil {
-		log.Printf("%v", err.Error())
-	}
-}
+
