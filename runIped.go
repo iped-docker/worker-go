@@ -215,18 +215,18 @@ func postProcessing(dirPath string, mvPath string) (finalError error) {
 
 func moveDir(dirPath string, mvPath string) (finalError error) {
 	if mvPath != "" {
-		if _, err := os.Stat(mvPath); os.IsNotExist(err) {
-			return fmt.Errorf("Destination MV path already exists. Fix it manually!")
-		} else {
+		_, err := os.Stat(mvPath)
+		if os.IsNotExist(err) {
 			srcPathArray := strings.Split(dirPath, "/")
 			srcDir := ""
-			for i := 0; i < len(srcPathArray)-1; i++ {
+			// because absolute path split creates an empty first item on array we start i with 1
+			for i := 1; i < len(srcPathArray)-1; i++ {
 				srcDir = srcDir + "/" + srcPathArray[i]
 			}
 
 			dstPathArray := strings.Split(mvPath, "/")
 			dstDir := ""
-			for i := 0; i < len(dstPathArray)-1; i++ {
+			for i := 1; i < len(dstPathArray)-1; i++ {
 				dstDir = dstDir + "/" + dstPathArray[i]
 			}
 			cmd := exec.Command("mkdir", "-pv", dstDir)
@@ -242,7 +242,8 @@ func moveDir(dirPath string, mvPath string) (finalError error) {
 					return err
 				}
 			}
-
+		} else {
+			return fmt.Errorf("Destination " + mvPath + " path already exists. Fix it manually!")
 		}
 	}
 	return nil
