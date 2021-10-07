@@ -20,7 +20,7 @@ type ipedParams struct {
 	profile         string
 	additionalArgs  string
 	additionalPaths string
-	mvPath		string
+	mvPath          string
 }
 
 func createIpedMetrics() ipedMetrics {
@@ -114,24 +114,24 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 		}
 	}
 
-	var ipedfolder string
+	var ipedFolder string
 	// ipedfolder is the absolute path of the target output folder
 	// Ex: /data/mat1/SARD
 	// params.output will usually be 'SARD', but it can be an absolute path
 	if path.IsAbs(params.output) {
-		ipedfolder = params.output
+		ipedFolder = params.output
 	} else {
-		ipedfolder = path.Join(path.Dir(params.evidence), params.output)
+		ipedFolder = path.Join(path.Dir(params.evidence), params.output)
 	}
-	err = os.MkdirAll(ipedfolder, 0755)
+	err = os.MkdirAll(ipedFolder, 0755)
 	if err != nil {
 		return err
 	}
-	err = os.Chmod(ipedfolder, 0750)
+	err = os.Chmod(ipedFolder, 0750)
 	if err != nil {
 		return err
 	}
-	log, err := os.OpenFile(path.Join(ipedfolder, "IPED.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	log, err := os.OpenFile(path.Join(ipedFolder, "IPED.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -183,21 +183,17 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 	if err != nil {
 		return fmt.Errorf("could not set status to '%s': %v", t, err)
 	}
-	
+
 	if errCmd != nil {
 		return err
 	}
-	else {
-		
-		return postProcessing(ipedFolder, params.mvPath)
-		
-	}
+
+	return postProcessing(ipedFolder, params.mvPath)
+
 }
 
-
-
-func postProcessing(dirPath string, mvPath string){
-	err = os.Chmod(dirPath, 0755)
+func postProcessing(dirPath string, mvPath string) (finalError error) {
+	err := os.Chmod(dirPath, 0755)
 	if err != nil {
 		return err
 	}
@@ -212,41 +208,43 @@ func postProcessing(dirPath string, mvPath string){
 	for _, p := range permPaths {
 		permissions(dirPath, p)
 	}
-	
-	
+
+	return moveDir(dirPath, mvPath)
+
+}
+
+func moveDir(dirPath string, mvPath string) (finalError error) {
 	if mvPath != "" {
 		if _, err := os.Stat(mvPath); os.IsNotExist(err) {
 			return fmt.Errorf("Destination MV path already exists. Fix it manually!")
-		}
-		else {
+		} else {
 			srcPathArray := strings.Split(dirPath, "/")
 			srcDir := ""
-			for i := 0; i < len(srcPathArray) -1; i++ {
+			for i := 0; i < len(srcPathArray)-1; i++ {
 				srcDir = srcDir + "/" + srcPathArray[i]
 			}
-			
+
 			dstPathArray := strings.Split(mvPath, "/")
 			dstDir := ""
-			for i := 0; i < len(dstPathArray) -1; i++ {
+			for i := 0; i < len(dstPathArray)-1; i++ {
 				dstDir = dstDir + "/" + dstPathArray[i]
 			}
-			cmd := exec.Command("mkdir", "-p", dstDir)
+			cmd := exec.Command("mkdir", "-pv", dstDir)
 			out, err := cmd.CombinedOutput()
+			log.Printf("%v", string(out))
 			if err != nil {
 				return err
-			}
-			else {
+			} else {
 				cmd := exec.Command("mv", srcDir, mvPath)
-				out, err := cmd.CombinedOutput()
+				out, err = cmd.CombinedOutput()
 				if err != nil {
 					return err
 				}
 			}
-			
+
 		}
 	}
-	return err
-
+	return nil
 }
 
 func permissions(dirPath string, targetPath string) {
@@ -256,9 +254,9 @@ func permissions(dirPath string, targetPath string) {
 	log.Printf("%v", string(out))
 	if err != nil {
 		log.Printf("%v", err.Error())
+
 	}
 }
-
 
 func eventThrottle(events <-chan event, syncSender func(event)) {
 	last := time.Now().Add(-1 * time.Second)
@@ -274,5 +272,3 @@ func eventThrottle(events <-chan event, syncSender func(event)) {
 		}(ev)
 	}
 }
-
-
