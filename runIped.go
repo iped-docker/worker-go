@@ -235,8 +235,9 @@ func moveDir(dirPath string, mvPath string) (finalError error) {
 			if err != nil {
 				return err
 			} else {
-				cmd := exec.Command("mv", srcDir, mvPath)
+				cmd := exec.Command("mv", "-v", srcDir, mvPath)
 				out, err = cmd.CombinedOutput()
+				log.Printf("%v", string(out))
 				if err != nil {
 					return err
 				}
