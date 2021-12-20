@@ -100,6 +100,8 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 	}
 	if params.profile != "" {
 		args = append(args, "-profile", params.profile)
+	} else {
+		args = append(args, "-profile", "pedo")
 	}
 	if params.additionalArgs != "" {
 		addArgsArray := strings.Split(params.additionalArgs, " ")
