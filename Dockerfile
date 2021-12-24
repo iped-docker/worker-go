@@ -1,5 +1,5 @@
 #using latest processor
-ARG IPED_VERSION=processor_3.18.12_3
+ARG IPED_VERSION=processor_3.18.12_4
 FROM golang:alpine as builder
 WORKDIR /go/src/app
 COPY . .
