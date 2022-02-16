@@ -90,7 +90,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 		"-Djava.awt.headless=true",
 		"-XX:+UnlockExperimentalVMOptions",
 		"-XX:+UseCGroupMemoryLimitForHeap",
-		"-Xmx6G",
+		"-Xms8G",
 		"-jar", params.jar,
 		"-d", path.Base(params.evidence),
 		"-o", params.output,
