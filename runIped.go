@@ -87,11 +87,9 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 		sendEvent(notifierURL, ev)
 	})
 	args := []string{
-		"-Djava.awt.headless=true",
-		"-XX:+UnlockExperimentalVMOptions",
-		"-XX:+UseCGroupMemoryLimitForHeap",
-		"-Xms8G",
+		"-Djava.awt.headless=true",		
 		"-jar", params.jar,
+		"-Xms8G",
 		"-d", path.Base(params.evidence),
 		"-o", params.output,
 		"--portable",
