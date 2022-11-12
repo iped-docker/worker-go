@@ -29,7 +29,7 @@ func Serve(options ServeOptions) {
 		router := WatchRouter(options.locker)
 		go http.ListenAndServe(fmt.Sprintf(":%s", options.PORT), router)
 
-		ctxWatch, ctxCancel := context.WithTimeout(context.Background(), 1*time.Hour)
+		ctxWatch, ctxCancel := context.WithTimeout(context.Background(), 6*time.Hour)
 		defer ctxCancel()
 		watch(ctxWatch, options.watchURL, options.jar, options.locker, options.notifierURL)
 	} else {
