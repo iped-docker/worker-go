@@ -7,15 +7,20 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
     - name: Docker login
       run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
+
     - name: pull latest (for cache)
       run: docker pull ipeddocker/worker-go:latest || echo could not pull
+
     - name: Docker build latest
       run: docker build --cache-from ipeddocker/worker-go:latest . -t ipeddocker/worker-go:latest 
+
     - name: Docker push latest
       run: docker push ipeddocker/worker-go:latest
+      
     - name: Docker push - semver
       run: |
         docker tag ipeddocker/worker-go:latest ipeddocker/worker-go:${GITHUB_REF#refs/tags/}       
