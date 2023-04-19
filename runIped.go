@@ -59,11 +59,6 @@ type ipedMetrics struct {
 func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metrics ipedMetrics) (finalError error) {
 	hostname, _ := os.Hostname()
 
-	_, errFs := os.Stat(params.evidence)
-	if os.IsNotExist(errFs) {
-		return fmt.Errorf("the main evidence path does not exist: %v", errFs)
-	}
-
 	metrics.calls.WithLabelValues(hostname, params.evidence).Inc()
 	metrics.running.WithLabelValues(hostname, params.evidence).Set(0)
 	err := locker.Lock(params.evidence)
@@ -92,6 +87,23 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 		}
 		sendEvent(notifierURL, ev)
 	})
+
+	_, errFs := os.Stat(params.evidence)
+	if os.IsNotExist(errFs) {
+		err_type := "failed_path"
+		err = sendEvent(notifierURL, event{
+			Type: err_type,
+			Payload: eventPayload{
+				EvidencePath: params.evidence,
+			},
+		})
+
+		if err != nil {
+			return fmt.Errorf("could not set status to '%s': %v", err_type, err)
+		}
+		return fmt.Errorf("Main evidence does not exist '%s': %v", err_type, errFs)
+	}
+
 	args := []string{
 		"-Djava.awt.headless=true",
 		"-jar", params.jar,
