@@ -90,7 +90,7 @@ func runIped(params ipedParams, locker *remoteLocker, notifierURL string, metric
 
 	_, errFs := os.Stat(params.evidence)
 	if os.IsNotExist(errFs) {
-		err_type := "failed"
+		err_type := "check-path"
 		err = sendEvent(notifierURL, event{
 			Type: err_type,
 			Payload: eventPayload{
