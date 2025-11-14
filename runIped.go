@@ -282,7 +282,10 @@ func eventThrottle(events <-chan event, syncSender func(event)) {
 	last := time.Now().Add(-1 * time.Second)
 	for ev := range events {
 		if ev.Type == "progress" {
-			if time.Since(last) < time.Second {
+			// eventthrottle will syncSender after 30sec timeout
+			// change made because of high load on wekan and wekan-graphql
+			// when various workers are processing
+			if time.Since(last) < 30 * time.Second {
 				continue
 			}
 			last = time.Now()
