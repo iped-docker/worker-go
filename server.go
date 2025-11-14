@@ -110,7 +110,8 @@ func watch(ctx context.Context, watchURL, jar string, locker *remoteLocker, noti
 				log.Fatalf("could not parse JSON: %v; data: %v\n", err, string(b))
 			}
 			if len(payloads) < 1 {
-				time.Sleep(5 * time.Second)
+				fmt.Printf("No card to process. Sleeping 15 sec")
+				time.Sleep(15 * time.Second)
 				continue
 			}
 			ctxPayloads, cancelPayload := context.WithTimeout(context.Background(), 60*time.Second)
