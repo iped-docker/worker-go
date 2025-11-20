@@ -215,12 +215,11 @@ func postProcessing(dirPath string, mvPath string) (finalError error) {
 	if err != nil {
 		return err
 	}
-	permPaths := []string{
-		"Ferramenta de Pesquisa.exe",
+	permPaths := []string{		
 		"IPED-SearchApp.exe",
-		"indexador/tools",
-		"indexador/jre/bin",
-		"indexador/lib",
+		"iped/tools",
+		"iped/jre/bin",
+		"iped/lib",
 	}
 
 	for _, p := range permPaths {
